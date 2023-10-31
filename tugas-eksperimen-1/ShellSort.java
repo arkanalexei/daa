@@ -1,6 +1,16 @@
 import java.util.Arrays;
 import java.util.Random;
 
+/*
+ * Credits:
+ * Code for Randomized Shellsort is entirely taken from the
+ * original paper published by Michael T Goodrich.
+ * The original title is: Michael T Goodrich. Randomized Shellsort:
+ * A Simple Data-Oblivious Sorting Algorithm. Journal of the ACM (JACM), 58(6):1–26, 2011
+ * 
+ * Source PDF is located in the repository for reference.
+ */
+
 public class ShellSort {
     public static final int C=4;
     public static void exchange(int[] a, int i, int j) {
@@ -59,8 +69,10 @@ public class ShellSort {
         }
     }
 
+
     public static void main(String[] args) {
-        int size = (int) Math.pow(2, 4);
+        // Adjust for small/mid/big size inputs
+        int size = (int) Math.pow(2, 16);
         Random rand = new Random();
 
         int[][] arrays = {
@@ -70,18 +82,10 @@ public class ShellSort {
         };
 
         String[] descriptions = {"Random Input", "Sorted Input", "Reverse Sorted Input"};
-
+        
         for (int i = 0; i < arrays.length; i++) {
-            System.out.println(descriptions[i] + " before sorting: " + Arrays.toString(arrays[i]));
-            randomizedShellSort(arrays[i]);
-            System.out.println(descriptions[i] + " after sorting: " + Arrays.toString(arrays[i]));
+            measureAndPrint(arrays[i], descriptions[i]);
         }
-
-        // for (int i = 0; i < arrays.length; i++) {
-        //     // measureAndPrint(arrays[i], descriptions[i]);
-            
-        // }
-
     }
 
     private static int[] generateRandomArray(int size, Random rand) {
