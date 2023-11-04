@@ -1,0 +1,20 @@
+| Size            | Data Type       | Algorithm  | Time (ms)  | Memory (B) |
+|-----------------|-----------------|------------|------------|------------|
+| small           | sorted          | ShellSort  | 5.80       | 187465     |
+| small           | sorted          | HeapSort   | 3.40       | 0          |
+| small           | random          | ShellSort  | 5.00       | 210401     |
+| small           | random          | HeapSort   | 4.20       | 0          |
+| small           | reverse         | ShellSort  | 5.00       | 209304     |
+| small           | reverse         | HeapSort   | 3.70       | 0          |
+| medium          | sorted          | ShellSort  | 33.40      | 1918948    |
+| medium          | sorted          | HeapSort   | 4.10       | 0          |
+| medium          | random          | ShellSort  | 32.10      | 1921837    |
+| medium          | random          | HeapSort   | 4.00       | 0          |
+| medium          | reverse         | ShellSort  | 32.60      | 1921925    |
+| medium          | reverse         | HeapSort   | 4.00       | 0          |
+| big             | sorted          | ShellSort  | 289.00     | 9650380    |
+| big             | sorted          | HeapSort   | 7.90       | 0          |
+| big             | random          | ShellSort  | 284.40     | 11703212   |
+| big             | random          | HeapSort   | 10.50      | 0          |
+| big             | reverse         | ShellSort  | 288.00     | 10458205   |
+| big             | reverse         | HeapSort   | 8.00       | 0          |
