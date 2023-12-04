@@ -9,8 +9,6 @@ by Y-J Seong, Y-G G, M-K Kang & C-W Kang
 PDF is also included in this repository as reference.
 '''
 
-import math
-
 class Item:
     def __init__(self, val, wt):
         self.val = val
