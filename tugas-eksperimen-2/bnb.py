@@ -73,5 +73,5 @@ if __name__ == '__main__':
     items = [Item(10, 5), Item(30, 10), Item(20, 15)]
     optimizer = KnapsackOptimizer(W, items)
     optimizer.solve()
-    print("Best val:", optimizer.get_best_val())
-    print("Best item configuration:", optimizer.get_best_configuration())
+    print("Best val:", optimizer.get_optimized_val())
+    print("Best item configuration:", optimizer.get_optimized_configuration())
