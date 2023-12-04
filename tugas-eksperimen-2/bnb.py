@@ -10,7 +10,6 @@ PDF is also included in this repository as reference.
 '''
 
 import math
-from enum import Enum
 
 class Item:
     def __init__(self, val, wt):
