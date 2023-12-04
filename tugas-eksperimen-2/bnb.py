@@ -1,128 +1,144 @@
-import math
+'''
+Code for the unbounded knapsack problem using branch and bound approach
+is taken from https://www.tandfonline.com/doi/pdf/10.1057/palgrave.jors.2601698?casa_token=EW35GGben2sAAAAA%3AVZt6DkysIcc7im289FIjHbV6Q3nZr2vYAH_HtWInlRnwryJnWsXKK87_g478Gof5mB_MDiz29IDO1eA
 
-class BranchAndBound:
-    def __init__(self, W, wt, val, n):
-        self.W = W
-        self.n = n
-        self.items = [{'value': val[i], 'weight': wt[i]} for i in range(n)]
-        print("lol", self.items)
-        self.M = None
-        self.best_solution = None
-        self.best_value = None
+The pseudocode inside the PDF is then refactored to Python.
+PDF is "An improved branch and bound algorithm for a strongly correlated unbounded knapsack problem"
+by Y-J Seong, Y-G G, M-K Kang & C-W Kang
+
+PDF is also included in this repository as reference.
+'''
+
+import math
+from enum import Enum
+
+class SearchState(Enum):
+    COMPLETE = 1
+    RETRACE = 2
+    PROCEED = 3
+
+class KnapsackOptimizer:
+    def __init__(self, capacity, weights, values):
+        self.capacity = capacity
+        self.items = [{'value': values[i], 'weight': weights[i]} for i in range(len(weights))]
+        self.num_items = len(self.items)
+        self.memory_table = None
+        self.optimal_solution = None
+        self.optimal_value = None
 
     def eliminate_dominated_items(self):
-        self.items.sort(key=lambda x: x['value'] / x['weight'], reverse=True)
-        filtered_items = []
+        self.items.sort(key=lambda item: item['value'] / item['weight'], reverse=True)
+        superior_items = []
 
-        for item in self.items:
-            if not any(dominating_item['weight'] <= item['weight'] and dominating_item['value'] >= item['value'] for dominating_item in filtered_items):
-                filtered_items.append(item)
+        for current_item in self.items:
+            if not any(other['weight'] <= current_item['weight'] and other['value'] >= current_item['value'] for other in superior_items):
+                superior_items.append(current_item)
 
-        self.items = filtered_items
-        self.n = len(filtered_items)
-    
-    def calculate_upper_bound(self, W_prime, V_N, i):
-        if i + 2 < self.n:
-            item1 = self.items[i]
-            item2 = self.items[i + 1]
-            item3 = self.items[i + 2]
+        self.items = superior_items
+        self.num_items = len(superior_items)
 
-            z_prime = V_N + (W_prime // item2['weight']) * item2['value']
-            W_double_prime = W_prime - (W_prime // item2['weight']) * item2['weight']
-            U_prime = z_prime + (W_double_prime * item3['value'] // item3['weight'])
-
-            W_double_prime_adjusted = W_double_prime + math.ceil((1 / item1['weight']) * (item2['weight'] - W_double_prime)) * item1['weight']
-            U_double_prime = z_prime + math.floor((W_double_prime_adjusted * item2['value'] / item2['weight']) - math.ceil((1 / item1['weight']) * (item2['weight'] - W_double_prime)) * item1['value'])
-
-            U = max(U_prime, U_double_prime)
+    def compute_upper_bound(self, remaining_capacity, accumulated_value, index):
+        if index + 2 < self.num_items:
+            item1, item2, item3 = self.items[index:index+3]
+            return self.estimate_bound(remaining_capacity, accumulated_value, item1, item2, item3)
         else:
-            U = V_N
-        return U
+            return accumulated_value
 
-    def step1_initialize(self):
+    def estimate_bound(self, remaining_capacity, accumulated_value, item1, item2, item3):
+        base_value = accumulated_value + (remaining_capacity // item2['weight']) * item2['value']
+        new_capacity = remaining_capacity - (remaining_capacity // item2['weight']) * item2['weight']
+        first_bound = base_value + (new_capacity * item3['value'] // item3['weight'])
+
+        adjusted_capacity = new_capacity + math.ceil((1 / item1['weight']) * (item2['weight'] - new_capacity)) * item1['weight']
+        second_bound = base_value + math.floor((adjusted_capacity * item2['value'] / item2['weight']) - math.ceil((1 / item1['weight']) * (item2['weight'] - new_capacity)) * item1['value'])
+
+        return max(first_bound, second_bound)
+
+    def initialize_search(self):
         self.eliminate_dominated_items()
-        self.M = [[0 for _ in range(self.W + 1)] for _ in range(self.n)]
-        self.best_solution = [0 for _ in range(self.n)]
-        self.best_value = 0
+        self.memory_table = [[0 for _ in range(self.capacity + 1)] for _ in range(self.num_items)]
+        self.optimal_solution = [0 for _ in range(self.num_items)]
+        self.optimal_value = 0
 
-        x = [0 for _ in range(self.n)]
-        i = 0
-        x[0] = self.W // self.items[0]['weight']
-        V_N = self.items[0]['value'] * x[0]
-        W_prime = self.W - self.items[0]['weight'] * x[0]
-        U = self.calculate_upper_bound(W_prime, V_N, i)
-        self.best_value = V_N
-        self.best_solution = x.copy()
+        selection = [0 for _ in range(self.num_items)]
+        current_index = 0
+        selection[0] = self.capacity // self.items[0]['weight']
+        current_value = self.items[0]['value'] * selection[0]
+        remaining_capacity = self.capacity - self.items[0]['weight'] * selection[0]
+        upper_bound = self.compute_upper_bound(remaining_capacity, current_value, current_index)
+        self.optimal_value = current_value
+        self.optimal_solution = selection.copy()
 
-        m = [float('inf') for _ in range(self.n)]
-        for idx in range(1, self.n):
-            for j in range(idx):
-                if self.items[j]['weight'] < m[idx]:
-                    m[idx] = self.items[j]['weight']
-        return x, i, V_N, W_prime, U, m
+        minimum_weights = [min(item['weight'] for item in self.items[i + 1:]) for i in range(self.num_items - 1)] + [float('inf')]
+        return selection, current_index, current_value, remaining_capacity, upper_bound, minimum_weights
 
-    def step2_develop(self, x, i, V_N, W_prime, U, m):
-        while True:
-            if W_prime < m[i]:
-                if self.best_value < V_N:
-                    self.best_value = V_N
-                    self.best_solution = x.copy()
-                    if self.best_value == U:
-                        return x, i, V_N, W_prime, "Finish"
-                return x, i, V_N, W_prime, "Backtrack"
-            else:
-                min_j = min((j for j in range(i + 1, self.n) if self.items[j]['weight'] <= W_prime), default=None)
-                if min_j is None or (V_N + self.calculate_upper_bound(W_prime, V_N, min_j) <= self.best_value):
-                    return x, i, V_N, W_prime, "Backtrack"
-                if self.M[i][W_prime] >= V_N:
-                    return x, i, V_N, W_prime, "Backtrack"
-                x[min_j] = W_prime // self.items[min_j]['weight']
-                V_N += self.items[min_j]['value'] * x[min_j]
-                W_prime -= self.items[min_j]['weight'] * x[min_j]
-                self.M[i][W_prime] = V_N
-                i = min_j
-                return x, i, V_N, W_prime, "Develop"
-    
-    def step3_backtrack(self, x, i, V_N, W_prime, m):
-        while True:
-            max_j = max((j for j in range(i + 1) if x[j] > 0), default=None)
-            if max_j is None:
-                return x, i, V_N, W_prime, "Finish"
-            i = max_j
-            x[i] -= 1
-            V_N -= self.items[i]['value']
-            W_prime += self.items[i]['weight']
-            if W_prime < m[i]:
-                continue
-            if V_N + math.floor(W_prime * self.items[i + 1]['value'] / self.items[i + 1]['weight']) <= self.best_value:
-                V_N -= self.items[i]['value'] * x[i]
-                W_prime += self.items[i]['weight'] * x[i]
-                x[i] = 0
-                continue
-            return x, i, V_N, W_prime, "Develop"
+    def search(self, selection, current_index, current_value, remaining_capacity, upper_bound, minimum_weights):
+        if remaining_capacity < minimum_weights[current_index]:
+            return self.evaluate_solution(selection, current_index, current_value, remaining_capacity, upper_bound)
+        
+        next_item = self.find_next_item(current_index, remaining_capacity)
+        if next_item is None or self.memory_table[current_index][remaining_capacity] >= current_value:
+            return selection, current_index, current_value, remaining_capacity, SearchState.RETRACE
+        
+        return self.update_selection(selection, current_index, current_value, remaining_capacity, next_item)
 
-    def branch_and_bound(self):
-        x, i, V_N, W_prime, U, m = self.step1_initialize()
-        next_step = "Develop"
-        while next_step != "Finish":
-            if next_step == "Develop":
-                x, i, V_N, W_prime, next_step = self.step2_develop(x, i, V_N, W_prime, U, m)
-            elif next_step == "Backtrack":
-                x, i, V_N, W_prime, next_step = self.step3_backtrack(x, i, V_N, W_prime, m)
-        return self.best_solution, self.best_value
+    def evaluate_solution(self, selection, current_index, current_value, remaining_capacity, upper_bound):
+        if self.optimal_value < current_value:
+            self.optimal_value = current_value
+            self.optimal_solution = selection.copy()
+            if self.optimal_value == upper_bound:
+                return selection, current_index, current_value, remaining_capacity, SearchState.COMPLETE
+        return selection, current_index, current_value, remaining_capacity, SearchState.RETRACE
 
-    def solve(self):
-        return self.branch_and_bound()
+    def find_next_item(self, current_index, remaining_capacity):
+        return next((j for j in range(current_index + 1, self.num_items) if self.items[j]['weight'] <= remaining_capacity), None)
+
+    def update_selection(self, selection, current_index, current_value, remaining_capacity, next_item):
+        selection[next_item] = remaining_capacity // self.items[next_item]['weight']
+        current_value += self.items[next_item]['value'] * selection[next_item]
+        remaining_capacity -= self.items[next_item]['weight'] * selection[next_item]
+        self.memory_table[current_index][remaining_capacity] = current_value
+        return selection, next_item, current_value, remaining_capacity, SearchState.PROCEED
+
+    def backtrack_search(self, selection, current_index, current_value, remaining_capacity, minimum_weights):
+        prev_item = max((j for j in range(current_index + 1) if selection[j] > 0), default=None)
+        if prev_item is None:
+            return selection, current_index, current_value, remaining_capacity, SearchState.COMPLETE
+        
+        return self.adjust_selection(selection, prev_item, current_value, remaining_capacity, minimum_weights)
+
+    def adjust_selection(self, selection, prev_item, current_value, remaining_capacity, minimum_weights):
+        selection[prev_item] -= 1
+        current_value -= self.items[prev_item]['value']
+        remaining_capacity += self.items[prev_item]['weight']
+
+        if remaining_capacity < minimum_weights[prev_item]:
+            return selection, prev_item, current_value, remaining_capacity, SearchState.RETRACE
+
+        if current_value + math.floor(remaining_capacity * self.items[prev_item + 1]['value'] / self.items[prev_item + 1]['weight']) <= self.optimal_value:
+            current_value -= self.items[prev_item]['value'] * selection[prev_item]
+            remaining_capacity += self.items[prev_item]['weight'] * selection[prev_item]
+            selection[prev_item] = 0
+            return selection, prev_item, current_value, remaining_capacity, SearchState.RETRACE
+        
+        return selection, prev_item, current_value, remaining_capacity, SearchState.PROCEED
+
+    def execute_branch_and_bound(self):
+        selection, current_index, current_value, remaining_capacity, upper_bound, minimum_weights = self.initialize_search()
+        next_step = SearchState.PROCEED
+        while next_step != SearchState.COMPLETE:
+            if next_step == SearchState.PROCEED:
+                selection, current_index, current_value, remaining_capacity, next_step = self.search(selection, current_index, current_value, remaining_capacity, upper_bound, minimum_weights)
+            elif next_step == SearchState.RETRACE:
+                selection, current_index, current_value, remaining_capacity, next_step = self.backtrack_search(selection, current_index, current_value, remaining_capacity, minimum_weights)
+        return self.optimal_solution, self.optimal_value
+
 
 if __name__ == '__main__':
     W = 100
     val = [10, 30, 20]
     wt = [5, 10, 15]
 
-    bnb = BranchAndBound(W, wt, val, len(wt))
-    solution, value = bnb.solve()
-
-    print(f"W (knapsack capacity): {W}")
-    print(f"Items <value, weight>: {list(zip(val, wt))}")
-    print(f"Best value: {value}")
-    print(f"Best item configuration: {solution}")                   
+    optimizer = KnapsackOptimizer(W, wt, val)
+    solution, value = optimizer.execute_branch_and_bound()
+    print(value)
