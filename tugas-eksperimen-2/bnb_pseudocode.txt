@@ -1,0 +1,76 @@
+Procedure 1: Eliminating the dominated items
+N = {1, 2, …, n}
+For j = 1 to |N| - 1
+	For k = j + 1 to |N|
+        If floor(w_k / w_j) v_j >= v_k then
+            N = N - {k}
+        Else if floor(w_j / w_k) v_k >= v_j then
+            N = N - {j}, k = |N|
+        End if
+    End for
+End for
+
+Procedure 2: Proposed algorithm
+Step 1. [Initialize]
+Eliminate dominated items according to Procedure 1. 
+Sort the non-dominated items according to decreasing v_i / w_i ratios.
+
+x^ = 0, x = 0, i = 1, z^ = 0
+
+Initialize empty sparse matrix M.
+x_1 = floor(W / w_1), V(N) = v_1 x_1, W' = W - w_1 x_1
+Calculate U
+Find m_i = min{w_j j>1} for all i = 1, 2, ..., n'
+
+Step 2. [Develop]
+If W' < m_i then
+    If z^ < V(N) then
+        z^ = V(N), x^ = x
+        If z^ = U then go to Step 5.
+    End if
+    Go to Step 3.
+Else
+    Find min j such that j > i and w_j <= W'
+    If V(N) + U(j, W') <= z^ then go to Step 3.
+    If M_(i, w') >= V(N) then go to Step 3.
+    x_j = floor(W' / w_j), V(N) = V(N) + v_j x_j, W' = W' - w_j x_j
+    M_(i,w') V(N) i = j
+    Go to Step 2.
+End if
+
+Step 3. [Backtrack]
+Find max j such that j <= i and x_j > 0
+If j < 1 then go to Step 5.
+i = j, x_i = x_i - 1
+V(N) = V(N) - v_i, W' = W' + w_i
+If W' < m_i then go to Step 3.
+If V(N) + floor(W' (v_(i+1)/(w_(i+1)))) <= z^ then
+    V(N) = V(N) - v_i x_i, W' = W' + w_i x_i, x_i = 0
+    Go to Step 3.
+End if
+If W' - w_i >= m_i then go to Step 2.
+
+Step 4. [Replace a jth item with an hth item]
+j = i, h = j + 1
+If z^ >= V(N) + floor (W' v_h / w_h) then go to Step 3.
+If w_h >= w_j then
+    If w_h = w_h or w_h > W' or z^ >= V(N) + v_h then
+        h = h + 1
+        Go to Step 4.
+    End if
+    If z^ = U then go to Step 5.
+    j = h, h = h + 1
+    Go to Step 4.
+Else
+    If W' - w_h < m_(h-1) then
+        h = h + 1
+        Go to Step 4.
+    End if
+    i = h, x_i = floor(W' / w_i)
+    V(N) = V(N) + v_i x_i, W' = W' - w_i x_i,
+    Go to step 2.
+End if
+
+Step 5. [Finish]
+Exit with z^ and x^.
+
