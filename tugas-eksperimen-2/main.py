@@ -4,55 +4,59 @@ from dp import unboundedKnapsack
 from bnb import KnapsackOptimizer, Item
 from tabulate import tabulate
 
-def read_data_from_file(filename):
+def read_data(filename):
     items = []
     with open(filename, 'r') as file:
-        next(file)
+        next(file)  # Skip header
         for line in file:
-            weight, value = line.strip().split(',')
-            items.append(Item(int(value), int(weight)))
+            weight, value = map(int, line.strip().split(','))
+            items.append(Item(value, weight))
     return items
 
-def run_experiment(method_function, items, capacity, runs=10):
-    total_time = 0
-    total_memory = 0
-    for _ in range(runs):
-        tracemalloc.start()
-        start_time = time.perf_counter()
+def run_experiment(method, items, W):
+    tracemalloc.start()
+    start_time = time.perf_counter()
 
-        result = method_function(items, capacity)
+    result = method(items, W)
 
-        end_time = time.perf_counter()
-        memory_used = tracemalloc.get_traced_memory()
-        tracemalloc.stop()
+    end_time = time.perf_counter()
+    memory_used = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
 
-        total_time += end_time - start_time
-        total_memory += memory_used[1] - memory_used[0]
+    time_taken = (end_time - start_time) * 1000
+    memory_used = memory_used[1] - memory_used[0]
+    return result, time_taken, memory_used
 
-    avg_time = total_time / runs * 1000
-    avg_memory = total_memory / runs
-    return result, avg_time, avg_memory
+def dp_method(items, W):
+    weights, values = zip(*[(item.wt, item.val) for item in items])
+    return unboundedKnapsack(W, weights, values, len(values))
+
+def bnb_method(items, W):
+    optimizer = KnapsackOptimizer(W, items)
+    optimizer.solve()
+    return optimizer.get_optimized_val()
 
 def print_results(results):
-    headers = ["Method", "Result", "Avg Time (ms)", "Avg Memory (B)"]
+    headers = ["Method", "Dataset", "Result", "Time (ms)", "Memory (B)"]
     print(tabulate(results, headers=headers, tablefmt="grid"))
+
+datasets = {
+    "kecil": 1000,
+    "sedang": 10000,
+    "besar": 100000
+}
 
 results = []
 base_dir = "dataset/"
-datasets = [f"{base_dir}dataset_kecil.txt", f"{base_dir}dataset_sedang.txt", f"{base_dir}dataset_besar.txt"]
 
-for filename in datasets:
-    items = read_data_from_file(filename)
-    W = 100
+for name, W in datasets.items():
+    filename = f"{base_dir}dataset_{name}.txt"
+    items = read_data(filename)
 
-    # Run DP
-    wt, val = zip(*[(item.wt, item.val) for item in items])
-    result, dp_time, dp_memory = run_experiment(lambda i, c: unboundedKnapsack(c, list(wt), list(val), len(val)), items, W)
-    results.append(["DP", result, f"{dp_time:.6f}", f"{dp_memory}"])
+    dp_result, dp_time, dp_memory = run_experiment(dp_method, items, W)
+    results.append(["DP", name, dp_result, dp_time, dp_memory])
 
-    # Run BnB
-    optimizer = KnapsackOptimizer(W, items)
-    result, bnb_time, bnb_memory = run_experiment(lambda i, c: optimizer.solve() or optimizer.get_optimized_val(), items, W)
-    results.append(["BnB", result, f"{bnb_time:.6f}", f"{bnb_memory}"])
+    bnb_result, bnb_time, bnb_memory = run_experiment(bnb_method, items, W)
+    results.append(["BnB", name, bnb_result, bnb_time, bnb_memory])
 
 print_results(results)
